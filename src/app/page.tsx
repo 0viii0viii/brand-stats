@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 
 type BrandItem = {
   brandId: string;
@@ -36,6 +38,7 @@ export default function HomePage() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -96,6 +99,7 @@ export default function HomePage() {
         }
       } finally {
         setLoading(false);
+        setHasFetchedOnce(true);
       }
     };
 
@@ -137,6 +141,9 @@ export default function HomePage() {
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(event.target.value);
   };
+
+  const isInitialLoading = loading && items.length === 0;
+  const isLoadingMore = loading && items.length > 0;
 
   return (
     <div className="flex min-h-screen justify-center bg-zinc-50 px-4 py-8 font-sans dark:bg-black">
@@ -182,7 +189,7 @@ export default function HomePage() {
         </section>
 
         <section className="flex flex-col gap-2">
-          {items.length === 0 && !loading && (
+          {hasFetchedOnce && items.length === 0 && !loading && (
             <div className="flex h-40 items-center justify-center rounded-md border border-dashed border-zinc-200 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
               해당 조건에 맞는 브랜드가 없습니다.
             </div>
@@ -202,7 +209,35 @@ export default function HomePage() {
           </div>
 
           <ul className="flex flex-col divide-y divide-zinc-100 rounded-b-md border border-zinc-200 border-t-0 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
-            {items.map((item, index) => {
+            {isInitialLoading &&
+              Array.from({ length: PAGE_SIZE }).map((_, index) => (
+                <li
+                  // skeleton은 순서만 필요해서 index 사용
+                  key={`skeleton-${index}`}
+                  className="grid items-center gap-x-4 px-3 py-3 sm:px-4 sm:py-3.5"
+                  style={{
+                    gridTemplateColumns: "2.5rem 1fr 6rem 5.5rem",
+                  }}
+                >
+                  <Skeleton className="mx-auto h-4 w-5" />
+                  <div className="min-w-0 flex flex-col gap-2">
+                    <Skeleton className="h-4 w-40 max-w-full" />
+                    <Skeleton className="h-3 w-28 max-w-full" />
+                  </div>
+                  <div className="flex flex-col items-end gap-2 text-right">
+                    <Skeleton className="h-3 w-10" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <div className="flex flex-col items-end gap-2 text-right">
+                    <Skeleton className="h-3 w-12" />
+                    <Skeleton className="h-4 w-14" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </li>
+              ))}
+
+            {!isInitialLoading &&
+              items.map((item, index) => {
               const rank = index + 1;
               const diff = item.followerDiff ?? 0;
               const diffLabel =
@@ -282,11 +317,16 @@ export default function HomePage() {
             ref={loadMoreRef}
             className="flex h-10 items-center justify-center text-xs text-zinc-500 dark:text-zinc-400"
           >
-            {loading
-              ? "불러오는 중..."
-              : hasMore
-                ? "아래로 스크롤하면 더 불러옵니다"
-                : "더 이상 데이터가 없습니다"}
+            {!hasFetchedOnce || isInitialLoading || items.length === 0 ? null : isLoadingMore ? (
+              <div className="flex items-center gap-2">
+                <Spinner className="text-zinc-500 dark:text-zinc-400" />
+                <span>불러오는 중...</span>
+              </div>
+            ) : hasMore ? (
+              "아래로 스크롤하면 더 불러옵니다"
+            ) : (
+              "더 이상 데이터가 없습니다"
+            )}
           </div>
         </section>
       </main>
